@@ -1,8 +1,8 @@
-name: Deploy MultiDocker
+name: Deploy Frontend
 on:
   push:
     branches:
-      - master # άλλαξέ το σε main αν το repo σου έχει main
+      - master # ή main αν το default branch σου λέγεται main
 
 jobs:
   build:
@@ -10,32 +10,31 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # 1. Σύνδεση στο Docker Hub
       - name: Log in to Docker Hub
         run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
+      # 2. Build του test image
       - name: Build Test Image
         run: docker build -t sanagno/react-test -f Dockerfile.dev .
 
+      # 3. Εκτέλεση των tests
       - name: Run Tests
         run: docker run -e CI=true sanagno/react-test npm test
 
-      - name: Build Production Images
-        run: |
-          docker build -t sanagno/multi-client-10-14 ./client
-          docker build -t sanagno/multi-nginx-10-14 ./nginx
-          docker build -t sanagno/multi-server-10-14 ./server
-          docker build -t sanagno/multi-worker-10-14 ./worker
+      # 4. Build του Production Image (React + Nginx)
+      - name: Build Production Image
+        run: docker build -t sanagno/docker-react .
 
-      - name: Push Images to Docker Hub
-        run: |
-          docker push sanagno/multi-client-10-14
-          docker push sanagno/multi-nginx-10-14
-          docker push sanagno/multi-server-10-14
-          docker push sanagno/multi-worker-10-14
+      # 5. Push του production image στο Docker Hub
+      - name: Push to Docker Hub
+        run: docker push sanagno/docker-react
 
+      # 6. Δημιουργία zip για το Elastic Beanstalk
       - name: Generate deployment package
         run: zip -r deploy.zip . -x '*.git*'
 
+      # 7. Deployment στο AWS Elastic Beanstalk
       - name: Deploy to EB
         uses: einaregilsson/beanstalk-deploy@v21
         with:

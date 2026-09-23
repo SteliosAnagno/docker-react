@@ -42,7 +42,7 @@ jobs:
           aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
           application_name: multi-gh
           environment_name: Multigh-env
-          existing_bucket_name: elasticbeanstalk-eu-north-1-923445559289
+          existing_bucket_name: elasticbeanstalk-eu-north-1-721030877384
           region: eu-north-1
           version_label: ${{ github.sha }}
           deployment_package: deploy.zip

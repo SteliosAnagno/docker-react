@@ -2,31 +2,46 @@ name: Deploy MultiDocker
 on:
   push:
     branches:
-        - main # Default branch might be master!
+        - master # Default branch might be master/ main !
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         # # Σύνδεση στο Docker Hub
-      - run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p {{secrets.DOCKER_PASSWORD }}
+      - name: Log In To Docker Hub 
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{secrets.DOCKER_PASSWORD }}
 
         # Build του image για τα tests
-      - run: docker build -t stelios/react-test -f ./client/Dockerfile.dev .
+      - name: Build And Test Client 
+        run: 
+          docker build -t sanagno/react-test -f ./client/Dockerfile.dev ./client
+          run: docker run -e CI=true sanagno/react-test npm test 
+      - name: Build Production Images 
+        run: docker build -t sanagno/multi-client-10-14 ./client
+          docker build -t sanagno/multi-nginx-10-14 ./nginx
+          docker build -t sanagno/multi-server-10-14 ./server
+          docker build -t sanagno/multi-worker-10-14 ./worker
+      - name: Push Images To Docker Hub
+        run: docker push sanagno/multi-client-10-14
+          docker push sanagno/multi-nginx-10-14
+          docker push sanagno/multi-server-10-14
+          docker push sanagno/multi-worker-10-14
+      
 
-        # Εκτέλεση των tests      
-      - run: docker run -e CI=true stelios/react-test npm test 
+      - name: Generate deployment package
+        run: zip -r deploy.zip . -x '*.git' 
+      - name: Deploy to EB
+        uses: einaregilsson/beanstalk-deploy@v21
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
+          application_name: multi-gh
+          environment_name: Multigh-env
+          existing_bucket_name: elasticbeanstalk-eu-north-1-923445559289
+          region: eu-north-1
+          version_label:  ${{ github.sha }}
+          deployment_package: deploy.zip
+
 
       
-      ##- run: docker build -t cygnetops/multi-client-10-14 ./client
-      ##- run: docker build -t cygnetops/multi-nginx-10-14 ./nginx
-      ##- run: docker build -t cygnetops/multi-server-10-14 ./server
-      ##- run: docker build -t cygnetops/multi-worker-10-14 ./worker
-      ##- run: docker push cygnetops/multi-client-10-14
-      ##- run: docker push cygnetops/multi-nginx-10-14
-      ##- run: docker push cygnetops/multi-server-10-14
-      ##- run: docker push cygnetops/multi-worker-10-14
-      
-
-      ##- name: Generate deployment package
-      ##  run: zip -r deploy.zip . -x '*.git' 
